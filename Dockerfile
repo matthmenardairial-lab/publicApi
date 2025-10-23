@@ -8,7 +8,7 @@ WORKDIR /app
 COPY target/TestAPI3-0.0.1-SNAPSHOT.jar /app/TestAPI3-0.0.1-SNAPSHOT.jar
 
 # Exposer le port sur lequel l'application écoute
-EXPOSE 8080
+EXPOSE 8091
 
 # Définir la commande de démarrage de l'application
 CMD ["java", "-jar", "TestAPI3-0.0.1-SNAPSHOT.jar"]
