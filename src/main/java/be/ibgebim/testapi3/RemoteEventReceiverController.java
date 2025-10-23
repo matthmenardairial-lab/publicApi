@@ -50,7 +50,8 @@ public class RemoteEventReceiverController {
     public ResponseEntity<String> handleEvent(
             @RequestParam(value = "validationtoken", required = false) String validationToken,
             @RequestBody(required = false) Map<String, Object> body) {
-
+        System.out.println("handleEvent validationToken: " + validationToken );
+        System.out.println("handleEvent validationToken: " + body );
         // 1️⃣ Validation du webhook
         if (validationToken != null && !validationToken.isEmpty()) {
             // SharePoint attend exactement ce token en réponse
