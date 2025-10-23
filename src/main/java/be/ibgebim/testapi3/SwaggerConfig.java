@@ -17,7 +17,7 @@ public class SwaggerConfig {
                 .paths(PathSelectors.any())
                 .build()
                 .apiInfo(apiInfo())
-                .host("localhost:8091");
+                .host("localhost:8080");
     }
 
     private ApiInfo apiInfo() {
