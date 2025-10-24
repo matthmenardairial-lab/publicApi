@@ -59,6 +59,7 @@ public class RemoteEventReceiverController {
     public ResponseEntity<String> handleEvent(
             @RequestParam(value = "validationtoken", required = false) String validationToken,
             @RequestBody(required = false) Map<String, Object> body) {
+        System.out.println("RemoteEventReceiverController.handleEvent called");
         System.out.println("handleEvent validationToken: " + validationToken);
         System.out.println("handleEvent body: " + body);
 
@@ -130,7 +131,8 @@ public class RemoteEventReceiverController {
     public ResponseEntity<String> webhook(
             @RequestParam(value = "validationtoken", required = false) String validationToken,
             @RequestBody(required = false) Map<String, Object> body) {
-        System.out.println("handleEvent called");
+        System.out.println("RemoteEventReceiverController.webhook called");
+        System.out.println("handleEvent validationToken: " + validationToken);
         System.out.println("body: " + body);
 
         // 1) Validation handshake
