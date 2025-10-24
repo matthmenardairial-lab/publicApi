@@ -50,33 +50,63 @@ public class RemoteEventReceiverController {
     public ResponseEntity<String> handleEvent(
             @RequestParam(value = "validationtoken", required = false) String validationToken,
             @RequestBody(required = false) Map<String, Object> body) {
-        System.out.println("handleEvent validationToken: " + validationToken );
-        System.out.println("handleEvent body: " + body );
+        System.out.println("handleEvent validationToken: " + validationToken);
+        System.out.println("handleEvent body: " + body);
 
         // 1️⃣ Validation du webhook
         if (validationToken != null && !validationToken.isEmpty()) {
             // SharePoint attend exactement ce token en réponse
             return ResponseEntity.ok(validationToken);
         }
+
         // 2️⃣ Notification réelle
         if (body != null && body.containsKey("value")) {
             Object valueObj = body.get("value");
             if (valueObj instanceof List) {
                 List<Map<String, Object>> notifications = (List<Map<String, Object>>) valueObj;
                 for (Map<String, Object> notification : notifications) {
+                    System.out.println("Notification details: " + notification);
+
                     String clientState = (String) notification.get("clientState");
                     String changeType = (String) notification.get("changeType");
                     String resource = (String) notification.get("resource");
 
                     // Vérification du clientState
                     if (!EXPECTED_CLIENT_STATE.equals(clientState)) {
-                        System.out.println(" ClientState invalide !");
+                        System.out.println("ClientState invalide !");
                         continue;
                     }
 
-                    System.out.printf(" Changement détecté : %s sur %s%n", changeType, resource);
+                    System.out.printf("Changement détecté : %s sur %s%n", changeType, resource);
+
+                    // Traitez les différents types de changements
+                    if (notification.containsKey("resourceData")) {
+                        Map<String, Object> resourceData = (Map<String, Object>) notification.get("resourceData");
+                        System.out.println("Resource Data: " + resourceData);
+                    } else {
+                        System.out.println("Resource Data n'est pas retrouvé: " + notification.containsKey("resourceData"));
+                    }
+
+                    switch (changeType) {
+                        case "ItemAdded":
+                            System.out.println("Un document a été ajouté.");
+                            break;
+                        case "ItemUpdated":
+                            System.out.println("Un document a été modifié.");
+                            break;
+                        case "ItemDeleted":
+                            System.out.println("Un document a été supprimé.");
+                            break;
+                        default:
+                            System.out.println("Type de changement non pris en charge : " + changeType);
+                            break;
+                    }
                 }
+            } else {
+                System.out.println("Le format de la notification n'est pas une liste.");
             }
+        } else {
+            System.out.println("Le corps de la requête ne contient pas la clé 'value'.");
         }
 
         // Toujours renvoyer 200 OK à SharePoint
