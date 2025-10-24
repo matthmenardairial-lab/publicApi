@@ -75,7 +75,11 @@
             <scope>test</scope>
         </dependency>
 
-
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-webflux</artifactId>
+            <version>5.3.22</version> <!-- Assurez-vous de vérifier la version la plus récente -->
+        </dependency>
 
 
 

@@ -1,5 +1,7 @@
 package be.ibgebim.testapi3;
 
+import be.ibgebim.entity.SharePointProperties;
+import be.ibgebim.service.SharePointChangesService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.HttpStatus;
@@ -17,6 +19,13 @@ public class RemoteEventReceiverController {
 
     private static final String EXPECTED_CLIENT_STATE = "testMatthieu";
 
+    private final SharePointChangesService changesService;
+    private final SharePointProperties props;
+
+    public RemoteEventReceiverController(SharePointChangesService changesService, SharePointProperties props) {
+        this.changesService = changesService;
+        this.props = props;
+    }
     //@PostMapping("/remote-event-receiver")
     /**public ResponseEntity handleEvent(@RequestBody String event) {
         System.out.println("Remote Event Receiver received: " + event);
@@ -46,7 +55,7 @@ public class RemoteEventReceiverController {
         return entity;
     }**/
     // Point d'entrée pour SharePoint
-    @PostMapping("/remote-event-receiver")
+    /**@PostMapping("/remote-event-receiver")
     public ResponseEntity<String> handleEvent(
             @RequestParam(value = "validationtoken", required = false) String validationToken,
             @RequestBody(required = false) Map<String, Object> body) {
@@ -110,6 +119,47 @@ public class RemoteEventReceiverController {
         }
 
         // Toujours renvoyer 200 OK à SharePoint
+        return ResponseEntity.ok("OK");
+    }**/
+    @PostMapping("/remote-event-receiver")
+    public ResponseEntity<String> handleEvent(
+            @RequestParam(value = "validationtoken", required = false) String validationToken,
+            @RequestBody(required = false) Map<String, Object> body) {
+        if (body == null || !body.containsKey("value")) {
+            // SharePoint peut parfois envoyer un corps vide (réessaie) -> toujours 200
+            return ResponseEntity.ok("OK");
+        }
+
+        Object valueObj = body.get("value");
+        if (!(valueObj instanceof List<?> list)) {
+            return ResponseEntity.ok("OK");
+        }
+
+        // Plusieurs notifications peuvent arriver en batch
+        for (Object o : list) {
+            if (!(o instanceof Map<?,?> notif)) continue;
+
+            String clientState = (String) notif.get("clientState");
+            if (clientState == null || !clientState.equals(props.getExpectedClientState())) {
+                // clientState invalide -> on ignore poliment
+                continue;
+            }
+
+            // À titre indicatif : autres champs utiles (selon SPO)
+            // String subscriptionId = (String) notif.get("subscriptionId");
+            // String resource = (String) notif.get("resource"); // GUID de la liste
+            // String siteUrl = (String) notif.get("siteUrl");
+            // String webId = (String) notif.get("webId");
+            // String expirationDateTime = (String) notif.get("expirationDateTime");
+
+            // 3) Appeler GetChanges et traiter
+            List<Map<String, Object>> changes = changesService.fetchAndProcessChanges();
+
+            // (Ici tu peux logger, pousser vers une file, etc.)
+            System.out.println("Changes processed: " + changes);
+        }
+
+        // SPO attend toujours 200 OK
         return ResponseEntity.ok("OK");
     }
 }

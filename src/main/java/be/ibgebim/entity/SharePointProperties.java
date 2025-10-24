@@ -1,0 +1,81 @@
+package be.ibgebim.entity;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.stereotype.Component;
+
+@Component
+@ConfigurationProperties(prefix = "sharepoint")
+public class SharePointProperties {
+    private String tenantId;
+    private String clientId;
+    private String clientSecret;
+    private String host;        // ex: https://mnx4.sharepoint.com
+    private String sitePath;    // ex: /sites/POC-eSign
+    private String listId;      // GUID
+    private String expectedClientState;
+    private String filterFolder; // peut être null/empty
+
+    public String getTenantId() {
+        return tenantId;
+    }
+
+    public void setTenantId(String tenantId) {
+        this.tenantId = tenantId;
+    }
+
+    public String getClientId() {
+        return clientId;
+    }
+
+    public void setClientId(String clientId) {
+        this.clientId = clientId;
+    }
+
+    public String getClientSecret() {
+        return clientSecret;
+    }
+
+    public void setClientSecret(String clientSecret) {
+        this.clientSecret = clientSecret;
+    }
+
+    public String getHost() {
+        return host;
+    }
+
+    public void setHost(String host) {
+        this.host = host;
+    }
+
+    public String getSitePath() {
+        return sitePath;
+    }
+
+    public void setSitePath(String sitePath) {
+        this.sitePath = sitePath;
+    }
+
+    public String getListId() {
+        return listId;
+    }
+
+    public void setListId(String listId) {
+        this.listId = listId;
+    }
+
+    public String getExpectedClientState() {
+        return expectedClientState;
+    }
+
+    public void setExpectedClientState(String expectedClientState) {
+        this.expectedClientState = expectedClientState;
+    }
+
+    public String getFilterFolder() {
+        return filterFolder;
+    }
+
+    public void setFilterFolder(String filterFolder) {
+        this.filterFolder = filterFolder;
+    }
+}
