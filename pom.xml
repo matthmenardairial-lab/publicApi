@@ -81,7 +81,10 @@
             <version>5.3.22</version> <!-- Assurez-vous de vérifier la version la plus récente -->
         </dependency>
 
-
+        <dependency>
+            <groupId>io.projectreactor.netty</groupId>
+            <artifactId>reactor-netty-http</artifactId>
+        </dependency>
 
 
     </dependencies>
