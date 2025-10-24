@@ -125,6 +125,9 @@ public class RemoteEventReceiverController {
     public ResponseEntity<String> handleEvent(
             @RequestParam(value = "validationtoken", required = false) String validationToken,
             @RequestBody(required = false) Map<String, Object> body) {
+        System.out.println("handleEvent called");
+        System.out.println("body: " + body);
+
         if (body == null || !body.containsKey("value")) {
             // SharePoint peut parfois envoyer un corps vide (réessaie) -> toujours 200
             return ResponseEntity.ok("OK");

@@ -25,7 +25,8 @@ public class SharePointChangesService {
         // 1) Charger le dernier token
         String listId = props.getListId();
         String lastToken = repo.findById(listId).map(ChangeTokenEntity::getLastChangeToken).orElse(null);
-
+        System.out.println("fetchAndProcessChanges listId: " + listId);
+        System.out.println("fetchAndProcessChanges lastToken: " + lastToken);
         // 2) Construire le ChangeQuery JSON (verbose)
         //   NB: pour odata=verbose, on doit envoyer __metadata.type
         StringBuilder json = new StringBuilder();
@@ -40,13 +41,17 @@ public class SharePointChangesService {
                     .append(escape(lastToken)).append("\"}");
         }
         json.append("}}");
+        System.out.println("fetchAndProcessChanges json: " + lastToken);
         String changeQueryJson = json.toString();
+        System.out.println("fetchAndProcessChanges changeQueryJson: " + changeQueryJson);
 
         // 3) Obtenir le FormDigest
         String digest = client.getFormDigest();
+        System.out.println("fetchAndProcessChanges digest: " + digest);
 
         // 4) POST GetChanges
         Map<String, Object> resp = client.postGetChanges(changeQueryJson, digest);
+        System.out.println("fetchAndProcessChanges resp: " + resp);
 
         // 5) Lire la réponse odata=verbose:
         // Structure typique:
@@ -63,6 +68,9 @@ public class SharePointChangesService {
         Map<String, Object> d = (Map<String, Object>) resp.get("d");
         Map<String, Object> getChanges = (Map<String, Object>) d.get("GetChanges");
         List<Map<String, Object>> results = (List<Map<String, Object>>) getChanges.get("results");
+        System.out.println("fetchAndProcessChanges d: " + d);
+        System.out.println("fetchAndProcessChanges getChanges: " + getChanges);
+        System.out.println("fetchAndProcessChanges results: " + results);
 
         List<Map<String, Object>> processed = new ArrayList<>();
         String newestToken = lastToken;
@@ -71,9 +79,12 @@ public class SharePointChangesService {
             for (Map<String, Object> change : results) {
                 Integer changeType = (Integer) change.get("ChangeType"); // 1=Add, 2=Update, 3=DeleteObject (valeurs internes SP)
                 Integer itemId = (Integer) change.get("ItemId");
-
+                System.out.println("fetchAndProcessChanges changeType: " + changeType);
+                System.out.println("fetchAndProcessChanges itemId: " + itemId);
                 // Met à jour le "newestToken" à chaque entrée (le dernier sera le plus récent)
                 Map<String, Object> ct = (Map<String, Object>) change.get("ChangeToken");
+                System.out.println("fetchAndProcessChanges ct: " + ct);
+
                 if (ct != null) {
                     String s = (String) ct.get("StringValue");
                     if (s != null) newestToken = s;
@@ -94,6 +105,7 @@ public class SharePointChangesService {
         if (newestToken != null && !Objects.equals(newestToken, lastToken)) {
             repo.save(new ChangeTokenEntity(listId, newestToken, Instant.now()));
         }
+        System.out.println("fetchAndProcessChanges processed: " + processed);
 
         return processed;
     }
