@@ -126,12 +126,17 @@ public class RemoteEventReceiverController {
         // Toujours renvoyer 200 OK à SharePoint
         return ResponseEntity.ok("OK");
     }
-    @PostMapping("/remote-event-receiver-complete")
-    public ResponseEntity<String> handleEventComplete(
+    @PostMapping("/webhook")
+    public ResponseEntity<String> webhook(
             @RequestParam(value = "validationtoken", required = false) String validationToken,
             @RequestBody(required = false) Map<String, Object> body) {
         System.out.println("handleEvent called");
         System.out.println("body: " + body);
+
+        // 1) Validation handshake
+        if (validationToken != null && !validationToken.isBlank()) {
+            return ResponseEntity.ok(validationToken);
+        }
 
         if (body == null || !body.containsKey("value")) {
             // SharePoint peut parfois envoyer un corps vide (réessaie) -> toujours 200
