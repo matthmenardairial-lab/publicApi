@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class HalloController {
     @GetMapping("/hello")
     public String hello() {
-        System.out.println("handleEvent called");
+        System.out.println("Hello world called");
         return "Hello Wordddddld!";
     }
 }
