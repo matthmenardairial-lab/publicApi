@@ -61,21 +61,7 @@ async function traiterStep(data) {
           await window.addBookmarkOnPdf(data.appState, docData);
           console.log(">>> End addBookmarkOnPdf");
 
-
-          // First rename de invoice with the bookmarks
-          try {
-              const invoiceWbUrl = data.case.case.FileRef + "/" + data.case.case.Title + "_bookmarkAdded_bookmarkAdded.pdf";
-              const file = sp.web.getFileByServerRelativeUrl(invoiceWbUrl);
-              const item = await file.getItem();
-              await item.update({
-                  FileLeafRef: data.case.case.FileRef + "/" + data.case.case.Title + "_withBookmarks.pdf"
-              });
-              console.log("File renamed");
-          } catch (error) {
-              console.error("Error renaming file:", error);
-          }
-
-          obj.status = "Bookmarks ajoutés au PDF";
+          obj.status = "Docx generated";
           return obj;
       } catch (err) {
           console.error(err);
