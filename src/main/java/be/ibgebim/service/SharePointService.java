@@ -1,12 +1,8 @@
 package be.ibgebim.service;
 
 import be.ibgebim.dto.SharePointDocument;
-import com.azure.identity.ClientSecretCredential;
-import com.azure.identity.ClientSecretCredentialBuilder;
 import com.microsoft.graph.authentication.*;
-import com.microsoft.graph.authentication.TokenCredentialAuthProvider;
 import com.microsoft.graph.models.*;
-import com.microsoft.graph.requests.GraphServiceClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -14,8 +10,6 @@ import java.io.*;
 import java.io.File;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.Collections;
-import java.util.concurrent.CompletableFuture;
 
 @Service
 public class SharePointService {
@@ -61,44 +55,133 @@ public class SharePointService {
     public void uploadToSharePoint(SharePointDocument sharePointDocument, File file) throws IOException {
         String completeName = file.getName();
         System.out.println("completeName: " + completeName);
-        String sharePointUploadUrl = sharepointUrl + "/sites/" + sharePointDocument.getSite() + "/_api/web/GetFolderByServerRelativeUrl('" + sharePointDocument.getSharePointPath() + "')/Files/add(url='" + completeName + "',overwrite=true)";
 
-        System.out.println("uploadToSharePoint sharePointUrl "+sharePointUploadUrl);
-        URL url = new URL(sharePointUploadUrl);
-        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-        connection.setDoOutput(true);
-        connection.setRequestMethod("POST");
-        connection.setRequestProperty("Authorization", "Bearer " + sharePointDocument.getAuthToken());
-        connection.setRequestProperty("Accept", "application/json;odata=verbose");
-        connection.setRequestProperty("Content-Type", "application/octet-stream");
+        String fileServerRelativeUrl = "/sites/" + sharePointDocument.getSite()
+                + "/" + sharePointDocument.getSharePointPath()
+                + "/" + sharePointDocument.getDocFileName();
+
+        System.out.println("uploadToSharePoint fileServerRelativeUrl " + fileServerRelativeUrl);
+
+        // 🔍 Étape 1 : Vérifier si le fichier existe déjà
+        boolean exists = checkFileExists(sharePointDocument, fileServerRelativeUrl);
+
+        if (exists) {
+            System.out.println("📄 Fichier trouvé sur SharePoint, mise à jour (nouvelle version)...");
+            uploadNewVersion(sharePointDocument, file, fileServerRelativeUrl);
+        } else {
+            System.out.println("🆕 Fichier non trouvé, création initiale...");
+            uploadInitialFile(sharePointDocument, file);
+        }
+    }
+
+    private boolean checkFileExists(SharePointDocument spDoc, String fileServerRelativeUrl) {
+        try {
+            String checkUrl = sharepointUrl
+                    + "/sites/" + spDoc.getSite()
+                    + "/_api/web/GetFileByServerRelativeUrl('" + fileServerRelativeUrl + "')";
+
+            HttpURLConnection conn = (HttpURLConnection) new URL(checkUrl).openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("Authorization", "Bearer " + spDoc.getAuthToken());
+            conn.setRequestProperty("Accept", "application/json;odata=verbose");
+
+            int code = conn.getResponseCode();
+            conn.disconnect();
+
+            return (code == 200);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+
+    private void uploadNewVersion(SharePointDocument spDoc, File file, String fileServerRelativeUrl) {
+        String uploadUrl = sharepointUrl
+                + "/sites/" + spDoc.getSite()
+                + "/_api/web/GetFileByServerRelativeUrl('" + fileServerRelativeUrl + "')/$value";
+
+        System.out.println("uploadNewVersion URL: " + uploadUrl);
 
         try {
-            FileInputStream fis = new FileInputStream(file);
-            OutputStream os = connection.getOutputStream();
+            HttpURLConnection connection = (HttpURLConnection) new URL(uploadUrl).openConnection();
+            connection.setDoOutput(true);
+            connection.setRequestMethod("PUT"); // ⚠️ PUT obligatoire
+            connection.setRequestProperty("Authorization", "Bearer " + spDoc.getAuthToken());
+            connection.setRequestProperty("Accept", "application/json;odata=verbose");
+            connection.setRequestProperty("Content-Type", "application/pdf");
 
-            byte[] buffer = new byte[1024];
-            int bytesRead;
-            while ((bytesRead = fis.read(buffer)) != -1) {
-                os.write(buffer, 0, bytesRead);
-            }
+            try (FileInputStream fis = new FileInputStream(file);
+                 OutputStream os = connection.getOutputStream()) {
 
-            // Envoyer la requête et traiter la réponse
-            int responseCode = connection.getResponseCode();
-            if (responseCode == HttpURLConnection.HTTP_OK || responseCode == HttpURLConnection.HTTP_CREATED) {
-                System.out.println("Fichier uploadé avec succès !");
-                os.close();
-                fis.close();
-                if (file.exists() && !file.delete()) {
-                    System.err.println("Impossible de supprimer le fichier temporaire : " + file.getAbsolutePath());
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+                while ((bytesRead = fis.read(buffer)) != -1) {
+                    os.write(buffer, 0, bytesRead);
                 }
-            } else {
-                System.out.println("Échec de l'upload. Code de réponse : " + responseCode);
-            }
 
+                int responseCode = connection.getResponseCode();
+                if (responseCode == HttpURLConnection.HTTP_OK
+                        || responseCode == HttpURLConnection.HTTP_CREATED
+                        || responseCode == HttpURLConnection.HTTP_NO_CONTENT) {
+                    System.out.println("✅ Nouvelle version du fichier créée avec succès !");
+                } else {
+                    System.err.println("❌ Échec du PUT. Code : " + responseCode);
+                    System.out.println(connection);
+                }
+            }
+            connection.disconnect();
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
-            connection.disconnect();
+            if (file.exists() && !file.delete()) {
+                System.err.println("Impossible de supprimer le fichier temporaire : " + file.getAbsolutePath());
+            }
         }
     }
+
+    private void uploadInitialFile(SharePointDocument spDoc, File file) {
+        String uploadUrl = sharepointUrl
+                + "/sites/" + spDoc.getSite()
+                + "/_api/web/GetFolderByServerRelativeUrl('" + spDoc.getSharePointPath() + "')/Files/add(url='" + file.getName() + "',overwrite=true)";
+
+        System.out.println("uploadInitialFile URL: " + uploadUrl);
+
+        try {
+            HttpURLConnection connection = (HttpURLConnection) new URL(uploadUrl).openConnection();
+            connection.setDoOutput(true);
+            connection.setRequestMethod("POST");
+            connection.setRequestProperty("Authorization", "Bearer " + spDoc.getAuthToken());
+            connection.setRequestProperty("Accept", "application/json;odata=verbose");
+            connection.setRequestProperty("Content-Type", "application/octet-stream");
+
+            try (FileInputStream fis = new FileInputStream(file);
+                 OutputStream os = connection.getOutputStream()) {
+
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+                while ((bytesRead = fis.read(buffer)) != -1) {
+                    os.write(buffer, 0, bytesRead);
+                }
+
+                int responseCode = connection.getResponseCode();
+                if (responseCode == HttpURLConnection.HTTP_CREATED || responseCode == HttpURLConnection.HTTP_OK) {
+                    System.out.println("✅ Fichier initial uploadé avec succès !");
+                } else {
+                    System.err.println("❌ Échec du POST initial. Code : " + responseCode);
+                    System.out.println(connection);
+                }
+            }
+            connection.disconnect();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (file.exists() && !file.delete()) {
+                System.err.println("Impossible de supprimer le fichier temporaire : " + file.getAbsolutePath());
+            }
+        }
+    }
+
+
+
 }
