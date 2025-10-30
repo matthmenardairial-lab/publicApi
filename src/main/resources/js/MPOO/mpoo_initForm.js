@@ -20,10 +20,9 @@ async function traiterStep(data) {
         },
         uniqueId: mpooFormId,
     }
-    console.log(">>> Begin ");
-    setTimeout(async () => {
-        await window.renameFile(data.appState, docData, data.case.case.Title + ".docx");
-    }, 5000);
+    console.log(">>> Begin renameFile");
+    await window.renameFile(data.appState, docData, data.case.case.Title + ".docx");
+    console.log(">>> End renameFile");
 
 }
 // Expose en global

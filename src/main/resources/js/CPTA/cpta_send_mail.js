@@ -8,20 +8,6 @@ async function traiterStep(data) {
       console.log(_step50);
       console.log(_step50.status);
 
-      const invoiceName1 = data.case.case.Title + "_withBookmark.pdf";
-      const invoiceUrl1 = data.case.case.FileRef + "/" + invoiceName1;
-      const invoiceId1 = await window.get_file_id(data.appState, invoiceUrl1);
-
-      const docData1 = {
-          name: invoiceName1,
-          template: {
-              type: "PDF",
-              title: invoiceName1,
-              url: invoiceUrl1,
-          },
-          uniqueId: invoiceId1,
-      }
-
       const invoiceName2 = data.case.case.Title + ".pdf";
       const invoiceUrl2 = data.case.case.FileRef + "/" + invoiceName2;
       const invoiceId2 = await window.get_file_id(data.appState, invoiceUrl2);
@@ -36,7 +22,6 @@ async function traiterStep(data) {
           uniqueId: invoiceId2,
       }
       const attachementList = [];
-      attachementList.push(docData1);
       attachementList.push(docData2);
 
       const toEmails = [];
