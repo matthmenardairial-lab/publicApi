@@ -56,7 +56,7 @@ public class CptaMailoutControler {
     @PostMapping("/cpta/mailout/detectBookmarkOnInvoice")
     public Map<String, Boolean> detectBookmarkOnInvoice(@RequestBody SharePointDocument spDocument) {
         Boolean arePresent = false;
-        System.out.println("cpta/mailout/addBookmarkOnInvoice method called");
+        System.out.println("cpta/mailout/detectBookmarkOnInvoice method called");
         System.out.println("spDocument: " + spDocument);
         String downloadedDocPath = sharePointService.downloadFromSharePoint(spDocument);
         File docToAnalyze = new File(downloadedDocPath);

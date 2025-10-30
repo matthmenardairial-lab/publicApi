@@ -25,44 +25,73 @@ public class EntraIdService {
     @Value("${sharepoint.clientSecret}")
     public String clientSecret;
 
-    public String getUserHierarchy(String userEmail){
-        String hierarchy = "";
-        // Création des credentials via azure-identity
-        ClientSecretCredential clientSecretCredential = new ClientSecretCredentialBuilder()
-                .tenantId(tenantId)
-                .clientId(clientId)
-                .clientSecret(clientSecret)
-                .build();
+    public static class UserDto {
+        private String id;
+        private String displayName;
+        private String mail;
+        private String jobTitle;
+        private String userPrincipalName;
 
-        // Scopes pour client-credentials : use .default sur graph
-        List<String> scopes = Arrays.asList("https://graph.microsoft.com/.default");
+        public UserDto() {}
 
-        TokenCredentialAuthProvider authProvider = new TokenCredentialAuthProvider(scopes, clientSecretCredential);
+        public UserDto(String id, String displayName, String mail, String jobTitle, String userPrincipalName) {
+            this.id = id;
+            this.displayName = displayName;
+            this.mail = mail;
+            this.jobTitle = jobTitle;
+            this.userPrincipalName = userPrincipalName;
+        }
 
-        GraphServiceClient<Request> graphClient = GraphServiceClient.builder().authenticationProvider(authProvider).buildClient();
+        // --- Getters & Setters ---
+        public String getId() { return id; }
+        public void setId(String id) { this.id = id; }
+
+        public String getDisplayName() { return displayName; }
+        public void setDisplayName(String displayName) { this.displayName = displayName; }
+
+        public String getMail() { return mail; }
+        public void setMail(String mail) { this.mail = mail; }
+
+        public String getJobTitle() { return jobTitle; }
+        public void setJobTitle(String jobTitle) { this.jobTitle = jobTitle; }
+
+        public String getUserPrincipalName() { return userPrincipalName; }
+        public void setUserPrincipalName(String userPrincipalName) { this.userPrincipalName = userPrincipalName; }
+    }
+
+    public List<UserDto> getUserHierarchy(String userEmail) {
+        List<UserDto> hierarchyList = new ArrayList<>();
 
         try {
-            // 1️⃣ Trouver le bon utilisateur
+            // ✅ Authentification Azure AD
+            ClientSecretCredential clientSecretCredential = new ClientSecretCredentialBuilder()
+                    .tenantId(tenantId)
+                    .clientId(clientId)
+                    .clientSecret(clientSecret)
+                    .build();
+
+            List<String> scopes = Arrays.asList("https://graph.microsoft.com/.default");
+            TokenCredentialAuthProvider authProvider = new TokenCredentialAuthProvider(scopes, clientSecretCredential);
+            GraphServiceClient<Request> graphClient = GraphServiceClient.builder().authenticationProvider(authProvider).buildClient();
+
+            // 🔍 Recherche de l’utilisateur initial
             UserCollectionPage usersPage = graphClient
                     .users()
                     .buildRequest()
                     .filter("mail eq '" + userEmail + "' or userPrincipalName eq '" + userEmail + "'")
-                    .select("id,displayName,mail,userPrincipalName")
+                    .select("id,displayName,mail,userPrincipalName,jobTitle")
                     .get();
 
             if (usersPage.getCurrentPage().isEmpty()) {
                 System.out.println("❌ Aucun utilisateur trouvé pour : " + userEmail);
-                return null;
+                return hierarchyList;
             }
 
             User user = usersPage.getCurrentPage().get(0);
             String currentUserId = user.id;
+            System.out.println("✅ Utilisateur trouvé : " + user.displayName);
 
-            System.out.println("✅ Utilisateur trouvé : " + user.displayName + " (" + user.userPrincipalName + ")");
-
-            // 2️⃣ Remonter la hiérarchie
-            List<String> hierarchyList = new ArrayList<>();
-
+            // 🔁 Remonter la hiérarchie de managers
             while (true) {
                 try {
                     DirectoryObject managerObject = graphClient
@@ -74,97 +103,37 @@ public class EntraIdService {
                     if (managerObject instanceof User) {
                         User manager = (User) managerObject;
 
-                        String managerInfo = manager.mail;
-                        hierarchyList.add(managerInfo);
+                        UserDto dto = new UserDto(
+                                manager.id,
+                                manager.displayName,
+                                manager.mail,
+                                manager.jobTitle,
+                                manager.userPrincipalName
+                        );
 
-                        System.out.println("👔 Manager trouvé : " + managerInfo);
+                        hierarchyList.add(dto);
+                        System.out.println("👔 Manager trouvé : " + manager.displayName + " <" + manager.mail + ">");
 
                         currentUserId = manager.id;
                     } else {
-                        System.out.println("⚠️ Le manager n'est pas un utilisateur (contact/groupe). Arrêt de la remontée.");
+                        System.out.println("⚠️ Le manager n'est pas un utilisateur. Arrêt de la remontée.");
                         break;
                     }
-
                 } catch (com.microsoft.graph.http.GraphServiceException gse) {
                     if (gse.getResponseCode() == 404) {
-                        // 404 = pas de manager supplémentaire → fin propre
                         System.out.println("⛔ Aucun manager supplémentaire trouvé. Fin de la hiérarchie.");
                         break;
                     } else {
-                        // autre erreur = on l’affiche
                         System.err.println("❌ Erreur Graph : " + gse.getMessage());
+                        break;
                     }
                 }
             }
-
-            // 3️⃣ Concaténer le tout
-            hierarchy = String.join(",", hierarchyList);
-            System.out.println("🏁 Chaîne hiérarchique : " + hierarchy);
+            System.out.println("🏁 Hiérarchie complète : " + hierarchyList.size() + " managers trouvés.");
+            System.out.println("🏁 Hiérarchie complète : " + hierarchyList.toString());
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-
-        /**try {
-            DirectoryObject managerObject = graphClient
-                    .users("Mathieu.Menard@inetum-realdolmen.world")
-                    .manager()
-                    .buildRequest()
-                    .get();
-
-            if (managerObject instanceof User) {
-                User manager = (User) managerObject;
-                System.out.println("Manager: " + manager.displayName);
-                System.out.println("Mail: " + manager.mail);
-            } else {
-                System.out.println("Le manager n'est pas un utilisateur (peut-être un contact ou un groupe).");
-            }
-        } catch (com.microsoft.graph.http.GraphServiceException gse) {
-            // 404 Not Found => pas de manager assigné
-            if (gse.getResponseCode() == 404) {
-                return null;
-            }
-            throw gse;
-        }
-
-
-
-        List<User> allUsers = new ArrayList<>();
-
-        try {
-            // 2️⃣ Appel à /users avec pagination automatique
-            UserCollectionPage page = graphClient
-                    .users()
-                    .buildRequest()
-                    // Optionnel : limiter les champs pour de meilleures perfs
-                    .select("id,displayName,mail,userPrincipalName,jobTitle,department,manager")
-                    .top(999) // 999 max par page
-                    .get();
-
-            while (page != null) {
-                allUsers.addAll(page.getCurrentPage());
-
-                // Récupération des pages suivantes
-                if (page.getNextPage() != null) {
-                    page = page.getNextPage().buildRequest().get();
-                } else {
-                    break;
-                }
-            }
-
-            System.out.println("✅ Nombre total d’utilisateurs récupérés : " + allUsers.size());
-
-            for (User user : allUsers) {
-                System.out.println("✅ User : " + user.displayName + " / " +  user.mail);
-            }
-        } catch (GraphServiceException gse) {
-            System.err.println("❌ Erreur Graph : " + gse.getMessage());
-            throw gse;
-        }**/
-
-
-
-        return hierarchy;
+        return hierarchyList;
     }
-
 }

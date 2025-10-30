@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -34,17 +35,12 @@ public class MpooControler {
             this.userMail = userMail;
         }
     }
+
     @PostMapping("/mpoo/getHierarchy")
-    public Map<String, String> getHierarchy(@RequestBody UserMailRequest request) {
-        System.out.println("CptaMailoutControler.getHierarchy method called");
-        String hierarchy = "";
-
+    public List<EntraIdService.UserDto> getHierarchy(@RequestBody UserMailRequest request) {
+        System.out.println("MpooControler.getHierarchy method called");
         String userMail = request.getUserMail();
-        System.out.println("CptaMailoutControler.getMailPropertyOnPDF userMail: " + userMail);
-        hierarchy = entraIdService.getUserHierarchy(userMail);
-
-        Map<String, String> response = new HashMap<>();
-        response.put("hierarchy", hierarchy);
-        return response;
+        System.out.println("MpooControler.getMailPropertyOnPDF userMail: " + userMail);
+        return entraIdService.getUserHierarchy(userMail);
     }
 }
